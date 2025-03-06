@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from PIL import Image
 
@@ -68,5 +70,45 @@ for i in range(13):
     y1 = round(100 + 95 * np.sin(i * 2 * np.pi / 13))
     bresanham(img_mat, x0, y0, x1, y1, (255, 255, 255))
 
-img = Image.fromarray(img_mat, mode='RGB')
-img.save('img.jpg')
+def baricenter (x0, y0, x1, y1, x2, y2, x, y):
+    lambda0 = ((x - x2) * (y1 - y2) - (x1 - x2) * (y - y2)) / ((x0 - x2) * (y1 - y2) - (x1 - x2) * (y0 - y2))
+    lambda1 = ((x0 - x2) * (y - y2) - (x - x2) * (y0 - y2)) / ((x0 - x2) * (y1 - y2) - (x1 - x2) * (y0 - y2))
+    lambda2 = 1.0 - lambda0 - lambda1
+    return lambda0, lambda1, lambda2
+
+def draw_triangle(x0, y0, z0, x1, y1, z1, x2, y2, z2, img_matr, color, z_buffer):
+    xmin = min(x0, x1, x2)
+    xmax = max(x0, x1, x2)
+    ymin = min(y0, y1, y2)
+    ymax = max(y0, y1, y2)
+
+    if (xmin < 0): xmin = 0
+    if (ymin < 0): ymin = 0
+
+    xmin = math.floor(xmin)
+    ymin = math.floor(ymin)
+    xmax = math.ceil(xmax)
+    ymax = math.ceil(ymax)
+
+    for x in range (xmin, xmax):
+        for y in range (ymin, ymax):
+            lam0, lam1, lam2 = baricenter(x0, y0, x1, y1, x2, y2, x, y)
+            if (lam0 >= 0 and lam1>= 0 and lam2 >= 0):
+                z_coord = lam0*z0 + lam1*z1 + lam2*z2
+                if z_coord > z_buffer[y][x]:
+                    continue
+                else:
+                    img_matr[y, x] = color
+                    z_buffer[y][x] = z_coord
+
+# draw_triangle(100.0, 100.0, 500.0, 500.0, 100.0, 1000.0, img_matr)
+# img = Image.fromarray(img_mat, mode='RGB')
+# img.save('img.jpg')
+
+def normal(x0, y0, z0, x1, y1, z1, x2, y2, z2):
+    return np.cross([x1 - x2, y1 - y2, z1 - z2], [x1 - x0, y1 - y0, z1 - z0])
+
+def sekator_nelic_gran(x0, y0, z0, x1, y1, z1, x2, y2, z2):
+    l = [0,0,1]
+    n = normal(x0, y0, z0, x1, y1, z1, x2, y2, z2)
+    return np.dot(n, l) / (np.linalg.norm(n) * np.linalg.norm(l))
